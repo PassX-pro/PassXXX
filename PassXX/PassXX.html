@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Password Manager</title>
+    <link rel="stylesheet" href="style1.css">
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+</head>
+
+<body>
+
+    <!-- Login Form -->
+    <div class="wrapper" id="loginForm">
+        <form id="login">
+            <h1>Login</h1>
+            <div class="input-box">
+                <input type="text" placeholder="Username" required>
+                <i class='bx bxs-user'></i>
+            </div>
+            <div class="input-box">
+                <input type="password" placeholder="Password" required>
+                <i class='bx bxs-lock-alt'></i>
+            </div>
+            <button type="submit" class="btn">Login</button>
+            <p id="error-message" style="color: red; display: none;">Username or Password is incorrect!</p>
+            <div class="register-link">
+                <p>Don't have an account? <a href="#" id="showRegister">Register</a></p>
+            </div>
+        </form>
+    </div>
+
+    <!-- Registration Form -->
+    <div class="wrapper" id="registerForm" style="display: none;">
+        <form id="register">
+            <h1>Register</h1>
+            <div class="input-box">
+                <input type="text" placeholder="Username" required id="regUsername">
+                <i class='bx bxs-user'></i>
+            </div>
+            <div class="input-box">
+                <input type="password" placeholder="Password" required id="regPassword">
+                <i class='bx bxs-lock-alt'></i>
+            </div>
+            <button type="submit" class="btn">Register</button>
+            <p id="reg-error-message" style="color: red; display: none;">Username already exists!</p>
+            <div class="register-link">
+                <p>Already have an account? <a href="#" id="showLogin">Login</a></p>
+            </div>
+        </form>
+    </div>
+
+    <!-- Password Manager Container -->
+    <div class="container" id="passwordManager" style="display: none;">
+        <nav>
+            <div class="logo">PassX</div>
+            <ul>
+                <li><button id="homeButton">Home</button></li>
+                <li>About</li>
+                <li>Contact</li>
+            </ul>
+        </nav>
+        <h1>Password Manager</h1>
+        <p>Manage your passwords securely.</p>
+        <h2>Your Passwords</h2>
+        <table id="passwordTable">
+            <tr>
+                <th>Website</th>
+                <th>Username</th>
+                <th>Password</th>
+            </tr>
+        </table>
+
+        <h2>Add a Password</h2>
+        <form id="addPasswordForm">
+            <label for="website">Website:</label>
+            <input type="text" id="website" name="website" required>
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" required>
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
+            <button class="btn" type="submit">Submit</button>
+        </form>
+        
+        <!-- Close Button -->
+        <button id="closeButton" class="btn" style="margin-top: 20px;">Close</button>
+    </div>
+
+    <script>
+        const USERS_KEY = 'users';
+
+        // Show login form
+        function showLoginForm() {
+            document.getElementById('loginForm').style.display = 'block';
+            document.getElementById('registerForm').style.display = 'none';
+            document.getElementById('passwordManager').style.display = 'none'; // Hide password manager
+            document.getElementById('error-message').style.display = 'none';
+            document.getElementById('reg-error-message').style.display = 'none';
+        }
+
+        // Show registration form
+        function showRegisterForm() {
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('registerForm').style.display = 'block';
+            document.getElementById('passwordManager').style.display = 'none'; // Hide password manager
+            document.getElementById('error-message').style.display = 'none';
+            document.getElementById('reg-error-message').style.display = 'none';
+        }
+
+        // Login functionality
+        document.getElementById('login').addEventListener('submit', function (event) {
+            event.preventDefault();
+            const username = this[0].value;
+            const password = this[1].value;
+
+            const users = JSON.parse(localStorage.getItem(USERS_KEY)) || [];
+            const isValidUser = users.some(user => user.username === username && user.password === password);
+
+            if (isValidUser) {
+                localStorage.setItem('currentUser', username); // Store current user
+                document.getElementById('loginForm').style.display = 'none';
+                document.getElementById('passwordManager').style.display = 'block';
+                document.getElementById('error-message').style.display = 'none'; // Hide error message
+                displayPasswords(username); // Display user's passwords
+            } else {
+                document.getElementById('error-message').style.display = 'block'; // Show error message
+            }
+        });
+
+        // Registration functionality
+        document.getElementById('register').addEventListener('submit', function (event) {
+            event.preventDefault();
+            const username = document.getElementById('regUsername').value;
+            const password = document.getElementById('regPassword').value;
+
+            const users = JSON.parse(localStorage.getItem(USERS_KEY)) || [];
+            const userExists = users.some(user => user.username === username);
+
+            if (userExists) {
+                document.getElementById('reg-error-message').style.display = 'block'; // Show error message
+            } else {
+                users.push({ username, password, passwords: [] });
+                localStorage.setItem(USERS_KEY, JSON.stringify(users));
+                alert("Registration successful! You can now log in.");
+                showLoginForm(); // Show login form after registration
+            }
+        });
+
+        // Password management functionality
+        document.getElementById('addPasswordForm').addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            const website = document.getElementById('website').value;
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            const currentUser = localStorage.getItem('currentUser');
+            const users = JSON.parse(localStorage.getItem(USERS_KEY));
+
+            // Find the current user and add the password
+            const user = users.find(user => user.username === currentUser);
+            if (user) {
+                user.passwords.push({ website, username, password });
+                localStorage.setItem(USERS_KEY, JSON.stringify(users));
+                displayPasswords(currentUser); // Display updated passwords
+                this.reset(); // Reset the form
+            }
+        });
+
+        function displayPasswords(currentUser) {
+            const table = document.getElementById('passwordTable');
+            const users = JSON.parse(localStorage.getItem(USERS_KEY));
+            const user = users.find(user => user.username === currentUser);
+
+            // Clear existing table rows (except for the header)
+            table.innerHTML = `
+                <tr>
+                    <th>Website</th>
+                    <th>Username</th>
+                    <th>Password</th>
+                </tr>
+            `;
+
+            // Populate the table with the current user's passwords
+            if (user && user.passwords) {
+                user.passwords.forEach(({ website, username, password }) => {
+                    const row = table.insertRow();
+                    row.insertCell(0).innerText = website;
+                    row.insertCell(1).innerText = username;
+                    row.insertCell(2).innerText = password;
+                });
+            }
+        }
+
+        // Show forms on link click
+        document.getElementById('showRegister').addEventListener('click', function() {
+            showRegisterForm();
+        });
+
+        document.getElementById('showLogin').addEventListener('click', function() {
+            showLoginForm();
+        });
+
+        // Home button functionality
+        document.getElementById('homeButton').addEventListener('click', function() {
+            localStorage.removeItem('currentUser'); // Optionally clear current user
+            showLoginForm(); // Redirect to the login page
+        });
+
+        // Close button functionality
+        document.getElementById('closeButton').addEventListener('click', function() {
+            window.close(); // Attempt to close the tab
+        });
+
+        // Load saved passwords on page load
+        window.onload = function() {
+            showLoginForm(); // Show login form on initial load
+        };
+    </script>
+</body>
+
+</html>
